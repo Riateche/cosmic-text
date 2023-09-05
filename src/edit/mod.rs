@@ -109,8 +109,17 @@ pub trait Edit {
     /// Get the current cursor
     fn cursor(&self) -> Cursor;
 
+    fn set_cursor_hidden(&mut self, hidden: bool);
+
     /// Set the current cursor
     fn set_cursor(&mut self, cursor: Cursor);
+
+    fn has_selection(&self) -> bool {
+        let cursor = self.cursor();
+        self.select_opt().map_or(false, |select| {
+            select.line != cursor.line || select.index != cursor.index
+        })
+    }
 
     /// Get the current selection position
     fn select_opt(&self) -> Option<Cursor>;

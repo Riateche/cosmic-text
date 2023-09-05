@@ -24,6 +24,8 @@ pub struct Editor {
     cursor_x_opt: Option<i32>,
     select_opt: Option<Cursor>,
     cursor_moved: bool,
+    has_preedit_without_cursor: bool,
+    cursor_force_hidden: bool,
 }
 
 impl Editor {
@@ -35,6 +37,8 @@ impl Editor {
             cursor_x_opt: None,
             select_opt: None,
             cursor_moved: false,
+            has_preedit_without_cursor: false,
+            cursor_force_hidden: false,
         }
     }
 
@@ -154,6 +158,12 @@ impl Edit for Editor {
 
     fn set_cursor(&mut self, cursor: Cursor) {
         self.cursor = cursor;
+        self.buffer.set_redraw(true);
+    }
+
+    fn set_cursor_hidden(&mut self, hidden: bool) {
+        self.cursor_force_hidden = hidden;
+        self.buffer.set_redraw(true);
     }
 
     fn select_opt(&self) -> Option<Cursor> {
@@ -589,10 +599,9 @@ impl Edit for Editor {
                             select.index = select.index.saturating_sub(start_delta);
                             self.select_opt = Some(select);
                         }
-                    } else {
-                        // TODO: hide cursor
                     }
                 }
+                self.has_preedit_without_cursor = !preedit.is_empty() && cursor.is_none();
                 self.buffer.set_redraw(true);
             }
             Action::Enter => {
@@ -898,14 +907,18 @@ impl Edit for Editor {
             }
 
             // Draw cursor
-            if let Some((x, y)) = cursor_position(&self.cursor, &run) {
-                f(
-                    x,
-                    y,
-                    1,
-                    line_height as u32,
-                    self.cursor.color.unwrap_or(color),
-                );
+            let cursor_hidden =
+                self.cursor_force_hidden || self.has_preedit_without_cursor || self.has_selection();
+            if !cursor_hidden {
+                if let Some((x, y)) = cursor_position(&self.cursor, &run) {
+                    f(
+                        x,
+                        y,
+                        1,
+                        line_height as u32,
+                        self.cursor.color.unwrap_or(color),
+                    );
+                }
             }
 
             for glyph in run.glyphs.iter() {
