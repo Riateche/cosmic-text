@@ -1,3 +1,6 @@
+use core::ops::Range;
+
+use alloc::borrow::Cow;
 #[cfg(not(feature = "std"))]
 use alloc::{string::String, vec::Vec};
 
@@ -35,6 +38,29 @@ impl BufferLine {
     /// Get current text
     pub fn text(&self) -> &str {
         &self.text
+    }
+
+    pub fn preedit_range(&self) -> Option<Range<usize>> {
+        self.attrs_list
+            .spans()
+            .iter()
+            .find(|(_, attrs)| attrs.is_preedit)
+            .map(|(range, _)| (*range).clone())
+    }
+
+    pub fn preedit_text(&self) -> Option<&str> {
+        let range = self.preedit_range()?;
+        Some(&self.text[range])
+    }
+
+    pub fn text_without_preedit(&self) -> Cow<'_, str> {
+        if let Some(range) = self.preedit_range() {
+            let mut text = self.text[..range.start].to_string();
+            text.push_str(&self.text[range.end..]);
+            text.into()
+        } else {
+            self.text.as_str().into()
+        }
     }
 
     /// Set text and attributes list

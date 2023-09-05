@@ -109,6 +109,7 @@ pub struct Attrs<'a> {
     pub style: Style,
     pub weight: Weight,
     pub metadata: usize,
+    pub is_preedit: bool,
 }
 
 impl<'a> Attrs<'a> {
@@ -123,6 +124,7 @@ impl<'a> Attrs<'a> {
             style: Style::Normal,
             weight: Weight::NORMAL,
             metadata: 0,
+            is_preedit: false,
         }
     }
 
@@ -162,6 +164,11 @@ impl<'a> Attrs<'a> {
         self
     }
 
+    pub fn preedit(mut self, is_preedit: bool) -> Self {
+        self.is_preedit = is_preedit;
+        self
+    }
+
     /// Check if font matches
     pub fn matches(&self, face: &fontdb::FaceInfo) -> bool {
         //TODO: smarter way of including emoji
@@ -190,6 +197,7 @@ pub struct AttrsOwned {
     pub style: Style,
     pub weight: Weight,
     pub metadata: usize,
+    pub is_preedit: bool,
 }
 
 impl AttrsOwned {
@@ -201,6 +209,7 @@ impl AttrsOwned {
             style: attrs.style,
             weight: attrs.weight,
             metadata: attrs.metadata,
+            is_preedit: attrs.is_preedit,
         }
     }
 
@@ -212,6 +221,7 @@ impl AttrsOwned {
             style: self.style,
             weight: self.weight,
             metadata: self.metadata,
+            is_preedit: self.is_preedit,
         }
     }
 }

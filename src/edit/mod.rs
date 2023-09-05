@@ -1,9 +1,11 @@
+use core::ops::Range;
+
 #[cfg(not(feature = "std"))]
 use alloc::string::String;
 
 #[cfg(feature = "swash")]
 use crate::Color;
-use crate::{AttrsList, BorrowedWithFontSystem, Buffer, Cursor, FontSystem};
+use crate::{AttrsList, AttrsOwned, BorrowedWithFontSystem, Buffer, Cursor, FontSystem};
 
 pub use self::editor::*;
 mod editor;
@@ -19,7 +21,7 @@ pub use self::vi::*;
 mod vi;
 
 /// An action to perform on an [`Editor`]
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Action {
     /// Move cursor to previous character ([Self::Left] in LTR, [Self::Right] in RTL)
     Previous,
@@ -75,6 +77,11 @@ pub enum Action {
     BufferStart,
     /// Move cursor to the end of the document
     BufferEnd,
+    SetPreedit {
+        preedit: String,
+        cursor: Option<(usize, usize)>,
+        attrs: Option<AttrsOwned>,
+    },
 }
 
 /// A trait to allow easy replacements of [`Editor`], like `SyntaxEditor`
@@ -125,6 +132,10 @@ pub trait Edit {
     /// attributes, or with the previous character's attributes if None is given.
     fn insert_string(&mut self, data: &str, attrs_list: Option<AttrsList>);
 
+    fn preedit_range(&self) -> Option<Range<usize>>;
+
+    fn preedit_text(&self) -> Option<&str>;
+
     /// Perform an [Action] on the editor
     fn action(&mut self, font_system: &mut FontSystem, action: Action);
 
@@ -138,6 +149,8 @@ pub trait Edit {
         f: F,
     ) where
         F: FnMut(i32, i32, u32, u32, Color);
+
+    fn cursor_position(&self) -> Option<(i32, i32)>;
 }
 
 impl<'a, T: Edit> BorrowedWithFontSystem<'a, T> {
