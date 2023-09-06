@@ -27,6 +27,7 @@ pub struct Editor {
     has_preedit_without_cursor: bool,
     cursor_force_hidden: bool,
     selection_color: Option<Color>,
+    selected_text_color: Option<Color>,
 }
 
 impl Editor {
@@ -41,6 +42,7 @@ impl Editor {
             has_preedit_without_cursor: false,
             cursor_force_hidden: false,
             selection_color: None,
+            selected_text_color: None,
         }
     }
 
@@ -833,9 +835,8 @@ impl Edit for Editor {
             let line_y = run.line_y;
             let line_top = run.line_top;
 
-            // Highlight selection
-            if let Some(select) = self.select_opt {
-                let (start, end) = match select.line.cmp(&self.cursor.line) {
+            let (selection_start, selection_end) = if let Some(select) = self.select_opt {
+                match select.line.cmp(&self.cursor.line) {
                     cmp::Ordering::Greater => (self.cursor, select),
                     cmp::Ordering::Less => (select, self.cursor),
                     cmp::Ordering::Equal => {
@@ -847,13 +848,18 @@ impl Edit for Editor {
                             (self.cursor, select)
                         }
                     }
-                };
+                }
+            } else {
+                (self.cursor, self.cursor)
+            };
 
+            // Highlight selection
+            if selection_start != selection_end {
                 let color = self
                     .selection_color
                     .unwrap_or_else(|| Color::rgba(color.r(), color.g(), color.b(), 0x33));
 
-                if line_i >= start.line && line_i <= end.line {
+                if line_i >= selection_start.line && line_i <= selection_end.line {
                     let mut range_opt = None;
                     for glyph in run.glyphs.iter() {
                         // Guess x offset based on characters
@@ -864,8 +870,8 @@ impl Edit for Editor {
                         for (i, c) in cluster.grapheme_indices(true) {
                             let c_start = glyph.start + i;
                             let c_end = glyph.start + i + c.len();
-                            if (start.line != line_i || c_end > start.index)
-                                && (end.line != line_i || c_start < end.index)
+                            if (selection_start.line != line_i || c_end > selection_start.index)
+                                && (selection_end.line != line_i || c_start < selection_end.index)
                             {
                                 range_opt = match range_opt.take() {
                                     Some((min, max)) => Some((
@@ -887,13 +893,13 @@ impl Edit for Editor {
                         }
                     }
 
-                    if run.glyphs.is_empty() && end.line > line_i {
+                    if run.glyphs.is_empty() && selection_end.line > line_i {
                         // Highlight all of internal empty lines
                         range_opt = Some((0, self.buffer.size().0 as i32));
                     }
 
                     if let Some((mut min, mut max)) = range_opt.take() {
-                        if end.line > line_i {
+                        if selection_end.line > line_i {
                             // Draw to end of line
                             if run.rtl {
                                 min = 0;
@@ -931,10 +937,20 @@ impl Edit for Editor {
             for glyph in run.glyphs.iter() {
                 let physical_glyph = glyph.physical((0., 0.), 1.0);
 
-                let glyph_color = match glyph.color_opt {
+                let mut glyph_color = match glyph.color_opt {
                     Some(some) => some,
                     None => color,
                 };
+                if let Some(color) = self.selected_text_color {
+                    let is_selected = line_i >= selection_start.line
+                        && line_i <= selection_end.line
+                        && (selection_start.line != line_i || glyph.end > selection_start.index)
+                        && (selection_end.line != line_i || glyph.start < selection_end.index);
+
+                    if is_selected {
+                        glyph_color = color;
+                    }
+                }
 
                 cache.with_pixels(
                     font_system,
@@ -962,6 +978,11 @@ impl Edit for Editor {
 
     fn set_selection_color(&mut self, color: Option<Color>) {
         self.selection_color = color;
+        self.buffer.set_redraw(true);
+    }
+
+    fn set_selected_text_color(&mut self, color: Option<Color>) {
+        self.selected_text_color = color;
         self.buffer.set_redraw(true);
     }
 }

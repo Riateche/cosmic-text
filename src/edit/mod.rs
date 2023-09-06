@@ -162,6 +162,7 @@ pub trait Edit {
     fn cursor_position(&self) -> Option<(i32, i32)>;
 
     fn set_selection_color(&mut self, color: Option<Color>);
+    fn set_selected_text_color(&mut self, color: Option<Color>);
 }
 
 impl<'a, T: Edit> BorrowedWithFontSystem<'a, T> {
