@@ -278,8 +278,8 @@ impl<'a> Edit for SyntaxEditor<'a> {
         self.editor.preedit_text()
     }
 
-    fn action(&mut self, font_system: &mut FontSystem, action: Action) {
-        self.editor.action(font_system, action);
+    fn action(&mut self, font_system: &mut FontSystem, action: Action, select: bool) {
+        self.editor.action(font_system, action, select);
     }
 
     /// Draw the editor
